@@ -5,16 +5,20 @@ My hobby is making lamps. Couple of latest projects required more advanced contr
 ## Hydrangea cofee table.
 
 [![Cofee table](/images/table_small.jpg)](https://raw.githubusercontent.com/kibergus/photon_charmer/main/images/table.jpg)
+[See video of it in action.](https://youtu.be/-L07Zq1sDZU)
+
 Design by Anastasia Petrushkina, electronics and firmware by Alexey Guseynov.
 
-Materials: hydrangea petals, resin, brass, acrylic paints.
+Materials: hydrangea petals, resin, brass, acrylic paints, ws2812b.
 
 ## Pixie tree.
-Click to see it in action:
 [![Pixie tree](/images/tree_lamp_small.jpg)](https://youtu.be/gSbW40JnVsY)
+[See video of it in action.](https://youtu.be/gSbW40JnVsY)
+
 Design by Alexey Guseynov.
 
 Tree: brass wire, pixie lights.
+
 Stand: wood, cardboard, modelling clay, pixie lights, ws2812b
 
 # Main features:
