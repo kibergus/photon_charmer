@@ -2,9 +2,9 @@
 
 My hobby is making lamps. Couple of latest projects required more advanced control than a mechanical switch. This repository holds firmware for these lamps. It runs on blue pill boards (STM32F103CB based) and under Chibi OS.
 
-## Hydrangea cofee table.
+## Hydrangea coffee table.
 
-[![Cofee table](/images/table_small.jpg)](https://raw.githubusercontent.com/kibergus/photon_charmer/main/images/table.jpg)
+[![Coffee table](/images/table_small.jpg)](https://raw.githubusercontent.com/kibergus/photon_charmer/main/images/table.jpg)
 [See video of it in action.](https://youtu.be/-L07Zq1sDZU)
 
 Design by Anastasia Petrushkina, electronics and firmware by Alexey Guseynov.
