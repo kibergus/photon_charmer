@@ -19,7 +19,9 @@
 #include "chprintf.h"
 
 namespace {
-/*
+
+#if defined LIGHT_HARDWARE_TREE
+
 THD_WORKING_AREA(button1HandlerThreadArea, 256);
 __attribute__((noreturn)) THD_FUNCTION(button1HandlerThread, arg) {
   (void)arg;
@@ -92,10 +94,10 @@ __attribute__((noreturn)) THD_FUNCTION(button2HandlerThread, arg) {
   ButtonController controller(GPIOA, 1, TIME_MS2I(1), &handler);
   controller();
 }
-*/
-// USB shell.
 
-#define SHELL_WA_SIZE   THD_WORKING_AREA_SIZE(2048)
+#endif // LIGHT_HARDWARE_TREE
+
+#if defined LIGHT_HARDWARE_TABLE
 
 int raw_touch_values[4] = {};
 int touch_values[4] = {};
@@ -110,27 +112,6 @@ void touch_calibration(BaseSequentialStream *chp, int argc, char *argv[]) {
     chThdSleepMilliseconds(500);
   }
 }
-
-const ShellCommand commands[] = {
-  // Low level LED controls.
-  {"pwm", commands::pwm},
-  {"rgb", commands::rgb},
-  {"hsv", commands::hsv},
-  // Light asm interpreter.
-  {"play", commands::play},
-  // High level LED controls.
-  {"brightness", commands::brightness},
-  {"pixie_lights", commands::pixie_lights},
-  {"rgb_backlight", commands::rgb_backlight},
-  {"glimmer", commands::glimmer},
-  {"touch_calibration", touch_calibration},
-  {NULL, NULL}
-};
-
-const ShellConfig shell_config = {
-  (BaseSequentialStream*) &SDU1,
-  commands
-};
 
 enum Buttons {
   ON_OF_BUTTON = 0,
@@ -257,6 +238,35 @@ __attribute__((noreturn)) THD_FUNCTION(touchThread, arg) {
   }
 }
 
+#endif // LIGHT_HARDWARE_TABLE
+
+// USB shell.
+#define SHELL_WA_SIZE   THD_WORKING_AREA_SIZE(2048)
+
+const ShellCommand commands[] = {
+  // Low level LED controls.
+  {"pwm", commands::pwm},
+  {"rgb", commands::rgb},
+  {"hsv", commands::hsv},
+  // Light asm interpreter.
+  {"play", commands::play},
+  // High level LED controls.
+  {"brightness", commands::brightness},
+  {"pixie_lights", commands::pixie_lights},
+  {"rgb_backlight", commands::rgb_backlight},
+  {"glimmer", commands::glimmer},
+
+  #if defined LIGHT_HARDWARE_TABLE
+    {"touch_calibration", touch_calibration},
+  #endif // LIGHT_HARDWARE_TABLE
+  {NULL, NULL}
+};
+
+const ShellConfig shell_config = {
+  (BaseSequentialStream*) &SDU1,
+  commands
+};
+
 } // namespace
 
 
@@ -269,13 +279,16 @@ int main(void) {
   initPwm();
   init_light_controller();
 
-  // EXTI
+  #if defined LIGHT_HARDWARE_TREE
   // Tree lamp has hardware buttons and EXTI is used to capture them.
-  //chThdCreateStatic(button1HandlerThreadArea, sizeof(button1HandlerThreadArea), NORMALPRIO, button1HandlerThread, NULL);
-  //chThdCreateStatic(button2HandlerThreadArea, sizeof(button2HandlerThreadArea), NORMALPRIO, button2HandlerThread, NULL);
+  chThdCreateStatic(button1HandlerThreadArea, sizeof(button1HandlerThreadArea), NORMALPRIO, button1HandlerThread, NULL);
+  chThdCreateStatic(button2HandlerThreadArea, sizeof(button2HandlerThreadArea), NORMALPRIO, button2HandlerThread, NULL);
+  #endif // LIGHT_HARDWARE_TREE
 
+  #if defined LIGHT_HARDWARE_TABLE
   // Cofee table uses touch buttons.
   chThdCreateStatic(touchThreadArea, sizeof(touchThreadArea), NORMALPRIO, touchThread, NULL);
+  #endif // LIGHT_HARDWARE_TABLE
 
   // Initializes a serial-over-USB CDC driver.
   sduObjectInit(&SDU1);

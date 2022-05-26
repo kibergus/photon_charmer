@@ -3,6 +3,9 @@
 # NOTE: Can be overridden externally.
 #
 
+CFLAGS = ${CFLAGS} -DLIGHT_HARDWARE_TREE
+#CFLAGS = ${CFLAGS} -DLIGHT_HARDWARE_TABLE
+
 # Compiler options here.
 ifeq ($(USE_OPT),)
   USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16 -DUSE_MAPLEMINI_BOOTLOADER=0 -lm
