@@ -35,6 +35,9 @@ Stand: wood, cardboard, modelling clay, pixie lights, ws2812b
   * Interrupt based. 
 * 4 channel touch controller.
   * No external circuosity required. Just connect sensing pads to GPIO pin.
+* ZigBee through IKEA TRÅDFRI module (scavenged from color-temperature adjustable bulb).
+  * State changes made through phisical buttons are not reported back to the module.
+  * Uses ADC to read commands as all timers are used up for PWM and touch buttons.
 * USB shell.
 * Basic built-in effects.
 * USB streaming effects support.
