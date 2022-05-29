@@ -20,6 +20,108 @@
 
 namespace {
 
+constexpr ADCConversionGroup zigbee_brightness{
+    .circular=false,
+    .num_channels=1,
+    .end_cb=NULL,
+    .error_cb=NULL,
+    0, 0,                         /* CR1, CR2 */
+    ADC_SMPR2_SMP_AN0(ADC_SAMPLE_41P5),
+    0,                            /* SMPR2 */
+    ADC_SQR1_NUM_CH(1),
+    0,                            /* SQR2 */
+    ADC_SQR3_SQ1_N(5)
+};
+
+constexpr ADCConversionGroup zigbee_color{
+    .circular=false,
+    .num_channels=1,
+    .end_cb=NULL,
+    .error_cb=NULL,
+    0, 0,                         /* CR1, CR2 */
+    ADC_SMPR2_SMP_AN0(ADC_SAMPLE_41P5),
+    0,                            /* SMPR2 */
+    ADC_SQR1_NUM_CH(1),
+    0,                            /* SQR2 */
+    ADC_SQR3_SQ1_N(4)
+};
+
+class MedianFilter {
+ public:
+  void add(adcsample_t value) {
+    buf_[pos_] = value;
+    pos_ = (pos_ + 1) % size;
+  }
+
+  adcsample_t value() const {
+    adcsample_t buf[size];
+    std::copy(std::begin(buf_), std::end(buf_), std::begin(buf));
+    std::sort(std::begin(buf), std::end(buf));
+    return buf[size/2 + 1];
+  }
+ private:
+  static constexpr size_t size = 5;
+  adcsample_t buf_[size] = {};
+  int pos_ = 0;
+};
+
+THD_WORKING_AREA(zigBeeThreadArea, 256);
+__attribute__((noreturn)) THD_FUNCTION(zigBeeThread, arg) {
+  (void)arg;
+  chRegSetThreadName("ZigBee");
+
+  bool in_control = false;
+
+  MedianFilter smooth_brightness;
+  MedianFilter smooth_color;
+
+  palSetPadMode(GPIOA, 4, PAL_MODE_INPUT_ANALOG);
+  palSetPadMode(GPIOA, 5, PAL_MODE_INPUT_ANALOG);
+  for(;;) {
+    adcsample_t brightness_raw, color_raw;
+    adcConvert(&ADCD1, &zigbee_brightness, &brightness_raw, 1);
+    adcConvert(&ADCD1, &zigbee_color, &color_raw, 1);
+
+    smooth_brightness.add(brightness_raw);
+    smooth_color.add(color_raw);
+
+    float brightness = std::max(0.f, float(smooth_brightness.value() - 15)) / 3900.f;
+    // TRÅDFRI applies dimming curve itself. As we have our own curve, here we negate it.
+    brightness = std::min(1.0, log10(brightness * 100 + 1) / 2);
+
+    if (brightness > 0) {
+      lights_controller()->set_brightness(int(brightness * MAX_BRIGHTNESS));
+      lights_controller()->set_pixie_on(true);
+      in_control = true;
+    } else if (in_control) {
+      lights_controller()->set_pixie_on(false);
+      // In case if the lamp is switched on manually restore at a reasonable brightness.
+      lights_controller()->set_brightness(MAX_BRIGHTNESS);
+      in_control = false;
+    }
+
+    if (in_control) {
+      lights_controller()->set_glimmer_speed(std::max(0, int(smooth_color.value()) - 20) * 10. / 3900.);
+    }
+
+    chThdSleepMilliseconds(100);
+  }
+}
+
+void zigbee_state(BaseSequentialStream *chp, int argc, char *argv[]) {
+  (void) argc;
+  (void) argv;
+  // A helper utility that prints zigbee state.
+  for(;;) {
+    adcsample_t brightness, color;
+    adcConvert(&ADCD1, &zigbee_brightness, &brightness, 1);
+    adcConvert(&ADCD1, &zigbee_color, &color, 1);
+    chprintf(chp, "Brightness: %d\r\n", int(brightness));
+    chprintf(chp, "Color: %d\r\n", int(color));
+    chThdSleepMilliseconds(250);
+  }
+}
+
 #if defined LIGHT_HARDWARE_TREE
 
 THD_WORKING_AREA(button1HandlerThreadArea, 256);
@@ -49,7 +151,7 @@ __attribute__((noreturn)) THD_FUNCTION(button2HandlerThread, arg) {
   class Handler : public ButtonHandler {
   public:
     void onClick() override {
-      lights_controller()->set_glimmer_on(!lights_controller()->glimmer_on());
+      lights_controller()->set_glimmer_speed(lights_controller()->glimmer_speed() > 0 ? 0 : 4);
     }
 
     void onKeyDown() override {
@@ -196,10 +298,10 @@ __attribute__((noreturn)) THD_FUNCTION(touchThread, arg) {
         pressed[BRIGHTNESS_BUTTON] = 0;
       }
       if (pressed[GLIMMER_BUTTON] == press_period) {
-        lights_controller()->set_glimmer_speed(lights_controller()->glimmer_speed() + 1);
+        lights_controller()->set_glimmer_speed(int(lights_controller()->glimmer_speed() + 1) % 4);
 
         lights_controller()->set_indicator_bar_size(3);
-        lights_controller()->set_indicator_bar_max_value(lights_controller()->glimmer_speed());
+        lights_controller()->set_indicator_bar_max_value(int(lights_controller()->glimmer_speed()));
 
         // Reset the counter to achieve looping.
         pressed[GLIMMER_BUTTON] = 0;
@@ -255,7 +357,7 @@ const ShellCommand commands[] = {
   {"pixie_lights", commands::pixie_lights},
   {"rgb_backlight", commands::rgb_backlight},
   {"glimmer", commands::glimmer},
-
+  {"zigbee_state", zigbee_state},
   #if defined LIGHT_HARDWARE_TABLE
     {"touch_calibration", touch_calibration},
   #endif // LIGHT_HARDWARE_TABLE
@@ -278,6 +380,8 @@ int main(void) {
 
   initPwm();
   init_light_controller();
+
+  chThdCreateStatic(zigBeeThreadArea, sizeof(zigBeeThreadArea), NORMALPRIO, zigBeeThread, NULL);
 
   #if defined LIGHT_HARDWARE_TREE
   // Tree lamp has hardware buttons and EXTI is used to capture them.

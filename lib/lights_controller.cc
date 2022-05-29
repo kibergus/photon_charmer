@@ -13,8 +13,12 @@ constexpr double PI = std::acos(-1);
 // Number of RGB leds in a ring.
 constexpr int RGB_LEDS = 53;
 // Good value for tree lamp.
-//constexpr float GLIMMER_SPEED = 0.001;
+#if defined LIGHT_HARDWARE_TREE
+constexpr float GLIMMER_SPEED = 0.00001;
+#endif // LIGHT_HARDWARE_TREE
+#if defined LIGHT_HARDWARE_TABLE
 constexpr float GLIMMER_SPEED = 0.0005;
+#endif // LIGHT_HARDWARE_TABLE
 
 constexpr uint32_t INDICATOR_BAR_BASE = RGB_LEDS * 2 - 4;
 
@@ -104,11 +108,15 @@ void LightsController::refresh() {
   }
 
   // Tree lamp effect.
-  // refresh_ring(6, 1);
+  #if defined LIGHT_HARDWARE_TREE
+  refresh_ring(6, 1);
+  #endif // LIGHT_HARDWARE_TREE
 
   // Cofee table effect.
+  #if defined LIGHT_HARDWARE_TABLE
   refresh_ring(0, 1);
   refresh_ring(53, 1);
+  #endif // LIGHT_HARDWARE_TABLE
 }
 
 __attribute__((noreturn)) void LightsController::run_effects() {
@@ -118,7 +126,7 @@ __attribute__((noreturn)) void LightsController::run_effects() {
 
     chThdSleepMilliseconds(2);
 
-    glimmer_position_ += TIME_I2MS(chVTTimeElapsedSinceX(cycleStartTime)) * GLIMMER_SPEED * (1 << glimmer_speed_);
+    glimmer_position_ += TIME_I2MS(chVTTimeElapsedSinceX(cycleStartTime)) * GLIMMER_SPEED * std::pow(2, glimmer_speed_);
   }
 }
 

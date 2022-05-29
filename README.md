@@ -43,6 +43,7 @@ Stand: wood, cardboard, modelling clay, pixie lights, ws2812b
 
 PWM channels: TIM3, TIM4 -> A6, A7, B0, B1, B6, B7, B8, B9
 ws2812: TIM1 -> A8
+ZigBee (via TRÅDFRI module): A4, A5
 
 **Tree specific:**
 Buttons: A0 A1

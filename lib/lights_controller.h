@@ -25,7 +25,7 @@ class LightsController {
   }
 
   // Sets average pixie lights brightness.
-  bool brightness() const { return brightness_; }
+  int brightness() const { return brightness_; }
   void set_brightness(int brightness) {
     brightness_ = brightness;
     refresh();
@@ -39,8 +39,8 @@ class LightsController {
   }
 
   // Toggle the glimmer effect.
-  int glimmer_speed() const { return glimmer_speed_; }
-  void set_glimmer_speed(int speed) { glimmer_speed_ = speed % 4; }
+  double glimmer_speed() const { return glimmer_speed_; }
+  void set_glimmer_speed(double speed) { glimmer_speed_ = speed; }
 
   // Toggle rainbow effect.
   Effect effect() const { return effect_; }
@@ -80,8 +80,8 @@ class LightsController {
   int indicator_bar_max_value_ = 0;
 
   // Effects state.
-  int glimmer_speed_ = 1.0;
-  float glimmer_position_ = 0.0;
+  double glimmer_speed_ = 1.0;
+  double glimmer_position_ = 0.0;
   Effect effect_ = Effect::RAINBOW;
 };
 

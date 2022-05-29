@@ -3,8 +3,8 @@
 # NOTE: Can be overridden externally.
 #
 
-CFLAGS = ${CFLAGS} -DLIGHT_HARDWARE_TREE
-#CFLAGS = ${CFLAGS} -DLIGHT_HARDWARE_TABLE
+PLATFORM = TREE
+#PLATFORM = TABLE
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
@@ -18,7 +18,7 @@ endif
 
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
-  USE_CPPOPT = -fno-rtti -std=c++17 -fno-exceptions -fno-threadsafe-statics
+  USE_CPPOPT = -fno-rtti -std=c++17 -fno-exceptions -fno-threadsafe-statics -DLIGHT_HARDWARE_${PLATFORM}
 endif
 
 # Enable this if you want the linker to remove unused code and data.
