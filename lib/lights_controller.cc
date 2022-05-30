@@ -97,7 +97,9 @@ void LightsController::refresh_ring(int base_channel, int direction) {
 }
 
 void LightsController::refresh() {
-  const int glimmer_range = std::min(brightness_, MAX_BRIGHTNESS - brightness_);
+  static constexpr int MIN_MARGIN = 10;
+  static constexpr int MAX_MARGIN = 10000;
+  const int glimmer_range = std::max(0, std::min(brightness_ - MIN_MARGIN, MAX_BRIGHTNESS - MAX_MARGIN - brightness_));
   for (int channel = 0; channel < 8; ++channel) {
     int glimmer_delta = 0;
     if (glimmer_speed_ > 0) {
@@ -120,13 +122,15 @@ void LightsController::refresh() {
 }
 
 __attribute__((noreturn)) void LightsController::run_effects() {
+  systime_t lastCycleTime = chVTGetSystemTimeX();
   for (;;) {
-    systime_t cycleStartTime = chVTGetSystemTimeX();
+    systime_t cycleTime = chVTGetSystemTimeX();
+    glimmer_position_ += TIME_I2MS(chTimeDiffX(lastCycleTime, cycleTime)) * GLIMMER_SPEED * std::pow(2, glimmer_speed_);
+    lastCycleTime = cycleTime;
+
     refresh();
 
     chThdSleepMilliseconds(2);
-
-    glimmer_position_ += TIME_I2MS(chVTTimeElapsedSinceX(cycleStartTime)) * GLIMMER_SPEED * std::pow(2, glimmer_speed_);
   }
 }
 

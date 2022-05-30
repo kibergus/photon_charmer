@@ -1,6 +1,6 @@
 #pragma once
 
-constexpr int MAX_BRIGHTNESS = 50000;
+constexpr int MAX_BRIGHTNESS = 40000;
 constexpr int MIN_BRIGHTNESS = 1;
 
 // 8 channel PWM Controller. Channels are mapped to following pins:

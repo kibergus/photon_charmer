@@ -101,7 +101,8 @@ __attribute__((noreturn)) THD_FUNCTION(zigBeeThread, arg) {
     }
 
     if (in_control) {
-      lights_controller()->set_glimmer_speed(std::max(0, int(smooth_color.value()) - 20) * 10. / 3900.);
+      static constexpr float MAX_GLIMMER_SPEED = 9.;
+      lights_controller()->set_glimmer_speed(std::max(0, int(smooth_color.value()) - 20) * MAX_GLIMMER_SPEED / 3900.);
     }
 
     chThdSleepMilliseconds(100);

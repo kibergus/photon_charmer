@@ -40,7 +40,13 @@ class LightsController {
 
   // Toggle the glimmer effect.
   double glimmer_speed() const { return glimmer_speed_; }
-  void set_glimmer_speed(double speed) { glimmer_speed_ = speed; }
+  void set_glimmer_speed(double speed) {
+    glimmer_speed_ = speed;
+    if (glimmer_speed_ == 0) {
+      // Just in case, to avoid loss of precision, reset the counter when it is safe to do so.
+      glimmer_position_ = 0;
+    }
+ }
 
   // Toggle rainbow effect.
   Effect effect() const { return effect_; }
