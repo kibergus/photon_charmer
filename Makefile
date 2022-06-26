@@ -3,8 +3,8 @@
 # NOTE: Can be overridden externally.
 #
 
-PLATFORM = TREE
-#PLATFORM = TABLE
+#PLATFORM = TREE
+PLATFORM = TABLE
 
 # Compiler options here.
 ifeq ($(USE_OPT),)

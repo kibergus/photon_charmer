@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <limits>
 
+mutex_t adc_mutex;
+
 namespace {
 
 const int max_calibration_samples = 1000;
@@ -64,10 +66,12 @@ int ADCTouchSensor::read_raw(unsigned samples) {
     palSetPadMode(port_, pad_, PAL_MODE_OUTPUT_PUSHPULL);
     chThdSleep(TIME_US2I(30));
 
+    chMtxLock(&adc_mutex);
     ground();
     palSetPadMode(port_, pad_, PAL_MODE_INPUT_ANALOG);
     adcsample_t sample;
     adcConvert(&ADCD1, &measurement_channel_, &sample, 1);
+    chMtxUnlock(&adc_mutex);
 
     total += sample;
   }

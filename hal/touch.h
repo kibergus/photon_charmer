@@ -3,6 +3,9 @@
 #include <utility>
 #include "hal.h"
 
+// This mutex must be locked each time ADC is used.
+extern mutex_t adc_mutex;
+
 // Touch capacitance reader. No external circuosity needed, internal pullup
 // resistors and ADC capacitor are used.
 class ADCTouchSensor

@@ -46,49 +46,58 @@ constexpr ADCConversionGroup zigbee_color{
     ADC_SQR3_SQ1_N(4)
 };
 
-class MedianFilter {
+class SpikeFilter {
  public:
   void add(adcsample_t value) {
     buf_[pos_] = value;
     pos_ = (pos_ + 1) % size;
+    value_ = (value_ * (smooth_factor - 1) + averaged_value()) / smooth_factor;
   }
 
-  adcsample_t value() const {
+  float value() const { return value_; }
+
+ private:
+  static constexpr size_t size = 9;
+  static constexpr float smooth_factor = 10;
+  adcsample_t buf_[size] = {};
+  int pos_ = 0;
+  float value_ = 0;
+
+  adcsample_t averaged_value() const {
     adcsample_t buf[size];
     std::copy(std::begin(buf_), std::end(buf_), std::begin(buf));
     std::sort(std::begin(buf), std::end(buf));
-    return buf[size/2 + 1];
+    return (buf[size/2] + buf[size/2 + 1] + buf[size/2 + 2]) / 3;
   }
- private:
-  static constexpr size_t size = 5;
-  adcsample_t buf_[size] = {};
-  int pos_ = 0;
 };
 
-THD_WORKING_AREA(zigBeeThreadArea, 256);
+THD_WORKING_AREA(zigBeeThreadArea, 512);
 __attribute__((noreturn)) THD_FUNCTION(zigBeeThread, arg) {
   (void)arg;
   chRegSetThreadName("ZigBee");
 
   bool in_control = false;
 
-  MedianFilter smooth_brightness;
-  MedianFilter smooth_color;
+  SpikeFilter smooth_brightness;
+  SpikeFilter smooth_color;
 
   palSetPadMode(GPIOA, 4, PAL_MODE_INPUT_ANALOG);
   palSetPadMode(GPIOA, 5, PAL_MODE_INPUT_ANALOG);
   for(;;) {
     adcsample_t brightness_raw, color_raw;
+    chMtxLock(&adc_mutex);
     adcConvert(&ADCD1, &zigbee_brightness, &brightness_raw, 1);
     adcConvert(&ADCD1, &zigbee_color, &color_raw, 1);
+    chMtxUnlock(&adc_mutex);
 
     smooth_brightness.add(brightness_raw);
     smooth_color.add(color_raw);
 
     float brightness = std::max(0.f, float(smooth_brightness.value() - 15)) / 3900.f;
+
+    #if defined LIGHT_HARDWARE_TREE
     // TRÅDFRI applies dimming curve itself. As we have our own curve, here we negate it.
     brightness = std::min(1.0, log10(brightness * 100 + 1) / 2);
-
     if (brightness > 0) {
       lights_controller()->set_brightness(int(brightness * MAX_BRIGHTNESS));
       lights_controller()->set_pixie_on(true);
@@ -104,8 +113,30 @@ __attribute__((noreturn)) THD_FUNCTION(zigBeeThread, arg) {
       static constexpr float MAX_GLIMMER_SPEED = 9.;
       lights_controller()->set_glimmer_speed(std::max(0, int(smooth_color.value()) - 20) * MAX_GLIMMER_SPEED / 3900.);
     }
+    #endif // LIGHT_HARDWARE_TREE
 
-    chThdSleepMilliseconds(100);
+    #if defined LIGHT_HARDWARE_TABLE
+    if (brightness > 0) {
+      lights_controller()->set_rgb_brightness(brightness);
+      lights_controller()->set_rgb_on(true);
+      in_control = true;
+    } else if (in_control) {
+      lights_controller()->set_rgb_on(false);
+      // In case if the lamp is switched on manually restore at a reasonable brightness.
+      lights_controller()->set_rgb_brightness(0.5);
+      in_control = false;
+    }
+
+    if (in_control) {
+        float normalized_color = std::max(0.f, std::min(1.f, (smooth_color.value() - 20) / 3900.f));
+        // Don't want MAX_EFFECT to be selected.
+        normalized_color -= 0.01;
+        lights_controller()->set_effect(
+            static_cast<Effect>(int(normalized_color * int(Effect::MAX_EFFECT))));
+    }
+    #endif // LIGHT_HARDWARE_TABLE
+
+    chThdSleepMilliseconds(25);
   }
 }
 
@@ -250,6 +281,7 @@ __attribute__((noreturn)) THD_FUNCTION(touchThread, arg) {
   for (;;) {
     for (int i = 0; i < 4; ++i) {
       std::tie(raw_touch_values[i], touch_values[i]) = sensors[i].read_both();
+
       int value = touch_values[i];
 
       if (value > threshold) {
@@ -374,6 +406,7 @@ const ShellConfig shell_config = {
 
 
 int main(void) {
+  chMtxObjectInit(&adc_mutex);
   halInit();
   chSysInit();
   ws2812_init();
